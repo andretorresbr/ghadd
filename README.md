@@ -7,13 +7,14 @@ Repositório de arquivos públicos utilizados no curso GoHacking Active Director
 ## Sync-ADObjectToGroup.ps1
 
 Exemplos de chamadas:
-- Sincroniza todos os computadores existentes debaixo da estrutura das OUs Tier0 e Domain Controllers com o grupo T0 Servers
+- (**Exemplo #1**) Sincroniza todos os computadores existentes debaixo da estrutura das OUs Tier0 e Domain Controllers com o grupo T0 Servers
   - `Sync-ADObjectToGroup -SourceOU ("OU=Tier0,DC=corp,DC=local", "OU=Domain Controllers,DC=corp,DC=local") -DestinationGroup "T0 Servers" -ObjectType Computer`
 
-- Sincroniza todos os usuários existentes debaixo da estrutura da OU Tier0 com o grupo T0 Users, com a exceção dos usuários breaktheglass_da e btg_da
+- (**Exemplo #2**) Sincroniza todos os usuários existentes debaixo da estrutura da OU Tier0 com o grupo T0 Users, com a exceção dos usuários breaktheglass_da e btg_da
   - `Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Users" -ObjectType User -ExcludedObject @("breaktheglass_da","btg_da")`
 
 Agendamento do script (a cada 1 hora):
+- **Exemplo #1**
 ```powershell
 # This script creates a scheduled task to run the AD Group Synchronization script every hour.
 # It uses the ScheduledTask module, which is available on Windows Server 2012 and newer.
@@ -25,7 +26,6 @@ $ScriptPath = "C:\Tools\Scripts\Sync-ADObjectToGroup.ps1" # <--- IMPORTANT: Upda
 
 # --- Action to be performed by the task ---
 # This action runs PowerShell with the necessary arguments to execute your script.
-#$TaskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$ScriptPath`""
 $TaskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command ""& { . `"$ScriptPath`"; Sync-ADObjectToGroup -SourceOU @('OU=Tier0,DC=corp,DC=local', 'OU=Domain Controllers,DC=corp,DC=local') -DestinationGroup 'T0 Servers' -ObjectType Computer }"""
 
 # --- Trigger for the task ---
@@ -45,4 +45,11 @@ try {
 catch {
     Write-Error "Failed to register the scheduled task. Ensure you are running PowerShell with Administrator privileges."
 }
+```
+- **Exemplo #2**
+  - Idêntico ao Exemplo #1, a diferença está apenas nas variáveis:
+```powershell
+$TaskName = "Synchronize T0 Users Group"
+$TaskDescription = "Synchronizes the 'T0 Users' group with users from specified OUs."
+$TaskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command ""& { . `"$ScriptPath`"; Sync-ADObjectToGroup -SourceOU 'OU=Usuarios,OU=Tier0,DC=corp,DC=local' -DestinationGroup 'T0 Users' -ObjectType User -ExcludedObject @('breaktheglass_da','btg_da') }"""
 ```

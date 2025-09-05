@@ -23,18 +23,21 @@ function Sync-ADObjectToGroup {
         An optional parameter to specify one or more objects (by their name) to be excluded from being
         added or removed from the group. This can be a single string or an array of strings.
 
+    .PARAMETER LogFile
+        The full path to the log file where all command output will be written. This is a mandatory parameter.
+		
     .EXAMPLE
         Sync-ADObjectToGroup -SourceOU "OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Servers" -ObjectType Computer
 
         This command synchronizes the 'T0 Servers' group to contain exactly the computer objects from the 'Tier0' OU and its sub-OUs.
 
     .EXAMPLE
-        Sync-ADObjectToGroup -SourceOU @("OU=Tier0,DC=corp,DC=local", "OU=Domain Controllers,DC=corp,DC=local") -DestinationGroup "T0 Servers" -ObjectType Computer
+        Sync-ADObjectToGroup -SourceOU @("OU=Tier0,DC=corp,DC=local", "OU=Domain Controllers,DC=corp,DC=local") -DestinationGroup "T0 Servers" -ObjectType Computer -LogFile "C:\Tools\Scripts\Sync-T0_Servers_log.txt"
 
         This command synchronizes the 'T0 Servers' group with computer objects found in both the 'Tier0' and 'Tier1' OUs.
 
     .EXAMPLE
-        Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Users" -ObjectType User -ExcludedObject @("breaktheglass_da","btg_da")
+        Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Users" -ObjectType User -ExcludedObject @("breaktheglass_da","btg_da") -LogFile "C:\Tools\Scripts\Sync-T0_Users_log.txt"
 
         This command synchronizes the 'T0 Users' group with user objects from the 'Usuarios/Tier0' OU, excluding the users with the name 'breaktheglass_da' and 'btg_da'.
 #>
@@ -46,8 +49,14 @@ function Sync-ADObjectToGroup {
         [Parameter(Mandatory = $true)]
         [ValidateSet("User", "Computer")]
         [string]$ObjectType,
-        [string[]]$ExcludedObject = $null
+        [string[]]$ExcludedObject = $null,
+		[Parameter(Mandatory = $true)]
+        [string]$LogFile
     )
+	
+	# Define the log file path
+	#$LogFile = "C:\Tools\Scripts\Sync-ADObjectToGroup_logs.txt"
+	Start-Transcript -Path $LogFile -Append
     
     # Check if the destination group exists
     try {
@@ -143,4 +152,5 @@ function Sync-ADObjectToGroup {
     }
 
     Write-Host "Synchronization script execution completed."
+	Stop-Transcript
 }

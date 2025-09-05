@@ -8,10 +8,22 @@ Repositório de arquivos públicos utilizados no curso GoHacking Active Director
 
 ### Exemplos de chamadas:
 - (**Exemplo #1**) Sincroniza todos os computadores existentes debaixo da estrutura das OUs Tier0 e Domain Controllers com o grupo T0 Servers
-  - `Sync-ADObjectToGroup -SourceOU ("OU=Tier0,DC=corp,DC=local", "OU=Domain Controllers,DC=corp,DC=local") -DestinationGroup "T0 Servers" -ObjectType Computer`
+  - `Sync-ADObjectToGroup -SourceOU ("OU=Tier0,DC=corp,DC=local", "OU=Domain Controllers,DC=corp,DC=local") -DestinationGroup "T0 Servers" -ObjectType Computer -LogFile "C:\Tools\Scripts\Sync-T0_Servers_log.txt"`
 
-- (**Exemplo #2**) Sincroniza todos os usuários existentes debaixo da estrutura da OU Tier0 com o grupo T0 Users, com a exceção dos usuários breaktheglass_da e btg_da
-  - `Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Users" -ObjectType User -ExcludedObject @("breaktheglass_da","btg_da")`
+- (**Exemplo #2**) Sincroniza todos os usuários existentes debaixo da estrutura da OU Tier0/Usuarios com o grupo T0 Users, com a exceção dos usuários breaktheglass_da e btg_da
+  - `Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Users" -ObjectType User -ExcludedObject @("breaktheglass_da","btg_da") -LogFile "C:\Tools\Scripts\Sync-T0_Users_log.txt"`
+
+- (**Exemplo #3**) Sincroniza todos os computadores existentes debaixo da estrutura da OU Tier1 com o grupo T1 Servers
+  - `Sync-ADObjectToGroup -SourceOU "OU=Tier1,DC=corp,DC=local" -DestinationGroup "T1 Servers" -ObjectType Computer -LogFile "C:\Tools\Scripts\Sync-T1_Servers_log.txt"`
+
+- (**Exemplo #4**) Sincroniza todos os usuários existentes debaixo da estrutura da OU Tier1/Usuarios com o grupo T1 Users
+  - `Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier1,DC=corp,DC=local" -DestinationGroup "T1 Users" -ObjectType User -LogFile "C:\Tools\Scripts\Sync-T1_Users_log.txt"`
+
+- (**Exemplo #5**) Sincroniza todos os computadores existentes debaixo da estrutura da OU Tier2 com o grupo T2 Estacoes
+  - `Sync-ADObjectToGroup -SourceOU "OU=Tier2,DC=corp,DC=local" -DestinationGroup "T2 Estacoes" -ObjectType Computer -LogFile "C:\Tools\Scripts\Sync-T2_Estacoes_log.txt"`
+
+- (**Exemplo #6**) Sincroniza todos os usuários existentes debaixo da estrutura da OU Tier2/Usuarios com o grupo T2 Users
+  - `Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier2,DC=corp,DC=local" -DestinationGroup "T2 Users" -ObjectType User -LogFile "C:\Tools\Scripts\Sync-T2_Users_log.txt"`
 
 ### Agendamento do script (a cada 1 hora):
 - **Exemplo #1**

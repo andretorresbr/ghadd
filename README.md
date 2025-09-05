@@ -6,14 +6,14 @@ Repositório de arquivos públicos utilizados no curso GoHacking Active Director
 
 ## Sync-ADObjectToGroup.ps1
 
-Exemplos de chamadas:
+### Exemplos de chamadas:
 - (**Exemplo #1**) Sincroniza todos os computadores existentes debaixo da estrutura das OUs Tier0 e Domain Controllers com o grupo T0 Servers
   - `Sync-ADObjectToGroup -SourceOU ("OU=Tier0,DC=corp,DC=local", "OU=Domain Controllers,DC=corp,DC=local") -DestinationGroup "T0 Servers" -ObjectType Computer`
 
 - (**Exemplo #2**) Sincroniza todos os usuários existentes debaixo da estrutura da OU Tier0 com o grupo T0 Users, com a exceção dos usuários breaktheglass_da e btg_da
   - `Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Users" -ObjectType User -ExcludedObject @("breaktheglass_da","btg_da")`
 
-Agendamento do script (a cada 1 hora):
+### Agendamento do script (a cada 1 hora):
 - **Exemplo #1**
 ```powershell
 # This script creates a scheduled task to run the AD Group Synchronization script every hour.

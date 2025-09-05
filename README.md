@@ -26,7 +26,7 @@ $ScriptPath = "C:\Tools\Scripts\Sync-ADObjectToGroup.ps1" # <--- IMPORTANT: Upda
 
 # --- Action to be performed by the task ---
 # This action runs PowerShell with the necessary arguments to execute your script.
-$TaskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command ""& { . `"$ScriptPath`"; Sync-ADObjectToGroup -SourceOU @('OU=Tier0,DC=corp,DC=local', 'OU=Domain Controllers,DC=corp,DC=local') -DestinationGroup 'T0 Servers' -ObjectType Computer }"""
+$TaskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command ""& { . `"$ScriptPath`"; Sync-ADObjectToGroup -SourceOU @('OU=Tier0,DC=corp,DC=local', 'OU=Domain Controllers,DC=corp,DC=local') -DestinationGroup 'T0 Servers' -ObjectType Computer -LogFile 'C:\Tools\Scripts\Sync-T0_Servers_log.txt' }"""
 
 # --- Trigger for the task ---
 # This creates a weekly trigger that runs every day of the week and repeats every hour indefinitely.
@@ -47,9 +47,9 @@ catch {
 }
 ```
 - **Exemplo #2**
-  - Idêntico ao Exemplo #1, a diferença está apenas nas variáveis:
+  - Idêntico ao Exemplo #1, a diferença está apenas nas seguintes variáveis:
 ```powershell
 $TaskName = "Synchronize T0 Users Group"
 $TaskDescription = "Synchronizes the 'T0 Users' group with users from specified OUs."
-$TaskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command ""& { . `"$ScriptPath`"; Sync-ADObjectToGroup -SourceOU 'OU=Usuarios,OU=Tier0,DC=corp,DC=local' -DestinationGroup 'T0 Users' -ObjectType User -ExcludedObject @('breaktheglass_da','btg_da') }"""
+$TaskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command ""& { . `"$ScriptPath`"; Sync-ADObjectToGroup -SourceOU 'OU=Usuarios,OU=Tier0,DC=corp,DC=local' -DestinationGroup 'T0 Users' -ObjectType User -ExcludedObject @('breaktheglass_da','btg_da') -LogFile 'C:\Tools\Scripts\Sync-T0_Users_log.txt' }"""
 ```

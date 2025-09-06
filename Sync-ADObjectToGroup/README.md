@@ -20,6 +20,42 @@
   - `Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier2,DC=corp,DC=local" -DestinationGroup "T2 Users" -ObjectType User -LogFile "C:\Tools\Scripts\Sync-T2_Users_log.txt"`
 
 ## Agendamento dos scripts (a cada 1 hora):
+
+### Estratégia A: agendamento único, em um script que invoca os outros
+- Utiliza o script Invoke-SyncADObjectToGroup.ps1
+```powershell
+# This script creates a scheduled task to run the AD Group Synchronization script every hour.
+# It uses the ScheduledTask module, which is available on Windows Server 2012 and newer.
+
+# --- Task Configuration Variables ---
+$TaskName = "Synchronize T0, T1 and T2 Users and Computers to groups related"
+$TaskDescription = "Synchronize T0, T1 and T2 Users and Computers to groups related"
+$ScriptPath = "C:\Tools\Scripts\Invoke-SyncADObjectToGroup.ps1" # <--- IMPORTANT: Update this path if your script is in a different location
+
+# --- Action to be performed by the task ---
+# This action runs PowerShell with the necessary arguments to execute your script.
+$TaskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command ""& { $ScriptPath }"""
+
+# --- Trigger for the task ---
+# This creates a weekly trigger that runs every day of the week and repeats every hour indefinitely.
+$TaskTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 60)
+
+# --- Principal (User Account) for the task ---
+# This sets the task to run with System privileges, whether a user is logged on or not.
+$TaskPrincipal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\System" -LogonType ServiceAccount -RunLevel Highest
+
+# --- Register the scheduled task ---
+try {
+    Write-Host "Registering scheduled task '$TaskName'..."
+    Register-ScheduledTask -Action $TaskAction -Trigger $TaskTrigger -Principal $TaskPrincipal -TaskName $TaskName -Description $TaskDescription -Force
+    Write-Host "Scheduled task '$TaskName' successfully registered." -ForegroundColor Green
+}
+catch {
+    Write-Error "Failed to register the scheduled task. Ensure you are running PowerShell with Administrator privileges."
+}
+```
+
+### Estratégia B: agendamento múltiplo, um para cada sincronismo
 - **Exemplo #1**
 ```powershell
 # This script creates a scheduled task to run the AD Group Synchronization script every hour.

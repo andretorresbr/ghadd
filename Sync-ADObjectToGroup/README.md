@@ -21,7 +21,7 @@
 
 ## Agendamento dos scripts (a cada 1 hora):
 
-### Estratégia A: agendamento único, em um script que invoca os outros
+### Estratégia A: agendamento único no Domain Controller, em um script que invoca os outros
 - Utiliza o script [Invoke-SyncADObjectToGroup.ps1](Invoke-SyncADObjectToGroup.ps1): sincroniza todos os computadores ou usuários existentes debaixo da estrutura de uma ou mais OUs e sincroniza com um grupo do AD
 ```powershell
 # This script creates a scheduled task to run the AD Group Synchronization script every hour.
@@ -55,7 +55,7 @@ catch {
 }
 ```
 
-### Estratégia B: agendamento múltiplo, um para cada sincronismo
+### Estratégia B: agendamento múltiplo no Domain Controller, um para cada sincronismo
 - **Exemplo #1**
 ```powershell
 # This script creates a scheduled task to run the AD Group Synchronization script every hour.

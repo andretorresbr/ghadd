@@ -1,3 +1,5 @@
+# Author: Andre Torres (https://github.com/andretorresbr/ghadd/)
+
 function Sync-ADObjectToGroup {
 <#
     .SYNOPSIS
@@ -55,7 +57,6 @@ function Sync-ADObjectToGroup {
     )
 	
 	# Define the log file path
-	#$LogFile = "C:\Tools\Scripts\Sync-ADObjectToGroup_logs.txt"
 	Start-Transcript -Path $LogFile -Append
     
     # Check if the destination group exists

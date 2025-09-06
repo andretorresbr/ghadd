@@ -1,3 +1,5 @@
+# Author: Andre Torres (https://github.com/andretorresbr/ghadd/)
+
 # Loads Sync-ADObjectToGroup script
 $path = $PSScriptRoot + "\Sync-ADObjectToGroup.ps1"
 Import-Module $path

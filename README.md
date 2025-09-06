@@ -7,6 +7,7 @@ Repositório de arquivos públicos utilizados no curso GoHacking Active Director
 ## Scripts compartilhados
 
 - [Sync-ADObjectToGroup.ps1](Sync-ADObjectToGroup/README.md): sincroniza todos os computadores ou usuários existentes debaixo da estrutura de uma ou mais OUs e sincroniza com um grupo do AD
+- [Sync-SiloMembers.ps1](Sync-SiloMembers/README.md): sincroniza usuários de um grupo a um Authentication Silo
 - **CriaEstruturaCORP.ps1**: cria todas as OUs, grupos e usuários utilizados nos laboratórios do curso GHADD
 - **Remove-JoinACLs.ps1**: comumente existe uma conta que adiciona computadores ao domínio (join accounts). Essas contas possuem DACLs inseguras sobre essas máquinas adicionadas. O script varre as DACLs do domínio e retira as DACLs atribuídas às join accounts e restaura o owner dos objetos.
-- **Sync-SiloMembers.ps1**: sincroniza usuários de um grupo a um Authentication Silo
+

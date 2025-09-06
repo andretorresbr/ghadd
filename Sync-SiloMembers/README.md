@@ -9,7 +9,7 @@
 
 ## Agendamento dos scripts (a cada 1 hora):
 
-### Estratégia A: agendamento único, em um script que invoca os outros
+### Estratégia A: agendamento único no Domain Controller, em um script que invoca os outros
 - Utiliza o script [Invoke-SyncSiloMembers.ps1](Invoke-SyncSiloMembers.ps1): sincroniza todos os grupos com os silos
 ```powershell
 # This script creates a scheduled task to run the Silo Synchronization script every hour.
@@ -43,7 +43,7 @@ catch {
 }
 ```
 
-### Estratégia B: agendamento múltiplo, um para cada sincronismo
+### Estratégia B: agendamento múltiplo no Domain Controller, um para cada sincronismo
 - **Exemplo #1**
 ```powershell
 # This script creates a scheduled task to run the Silo Synchronization script every hour.

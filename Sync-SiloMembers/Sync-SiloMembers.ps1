@@ -1,29 +1,31 @@
+# Author: Andre Torres (https://github.com/andretorresbr/ghadd/)
+
 function Sync-SiloMembers {
-<#
-.SYNOPSIS
-Synchronizes user members of an Active Directory group to an authentication policy silo.
+	<#
+	.SYNOPSIS
+	Synchronizes user members of an Active Directory group to an authentication policy silo.
 
-.DESCRIPTION
-This function performs a two-way synchronization:
-1. It removes users from the specified silo that are not members of the admin group.
-2. It adds users from the admin group to the silo and sets their authentication policy silo property.
+	.DESCRIPTION
+	This function performs a two-way synchronization:
+	1. It removes users from the specified silo that are not members of the admin group.
+	2. It adds users from the admin group to the silo and sets their authentication policy silo property.
 
-.PARAMETER siloName
-The name of the authentication policy silo to synchronize.
+	.PARAMETER siloName
+	The name of the authentication policy silo to synchronize.
 
-.PARAMETER adminGroup
-The name of the Active Directory group whose user members should be synchronized to the silo.
+	.PARAMETER adminGroup
+	The name of the Active Directory group whose user members should be synchronized to the silo.
 
-.EXAMPLE
-Sync-SiloMembers -siloName "T0-Silo" -adminGroup "T0 Admins"
-Sync-SiloMembers -siloName "T1-Silo" -adminGroup "T1 Admins"
+	.PARAMETER LogFile
+	The full path to the log file where all command output will be written. This is a mandatory parameter.
 
-This command synchronizes the members of the "T1 Admins" group to the "T1-Silo" authentication policy silo. It ensures that only members of the group are configured in the silo and that all group members have the silo set on their user account.
+	.EXAMPLE
+	Sync-SiloMembers -siloName "T0-Silo" -adminGroup "T0 Admins" -LogFile "C:\Tools\Scripts\Sync-T0_Silo_log.txt"
+	Sync-SiloMembers -siloName "T1-Silo" -adminGroup "T1 Admins" -LogFile "C:\Tools\Scripts\Sync-T1_Silo_log.txt"
 
-.NOTES
-Author: Your Name
-Date: August 25, 2025
-#>
+	This command synchronizes the members of the "T1 Admins" group to the "T1-Silo" authentication policy silo. It ensures that only members of the group are configured in the silo and that all group members have the silo set on their user account.
+
+	#>
     [CmdletBinding(SupportsShouldProcess=$true)]
     param (
         [Parameter(Mandatory=$true,
@@ -32,15 +34,13 @@ Date: August 25, 2025
 
         [Parameter(Mandatory=$true,
                    HelpMessage="The name of the Active Directory group whose members should be synchronized to the silo.")]
-        [string]$adminGroup
+        [string]$adminGroup,
+		[Parameter(Mandatory = $true)]
+        [string]$LogFile
     )
-
-	# This script synchronizes members of a silo ($siloname) and a group ($adminGroup)
-	# First step makes sure that there are no members on Silo that are NOT present on group
-	# Second step makes sure that all members on group are also members on Silo
-	# Fill It
-	#$siloName = "T0-Silo"
-	#$adminGroup = "T0 Admins"
+	
+	# Define the log file path
+	Start-Transcript -Path $LogFile -Append
 
 	# Get the 'T0-Silo' authentication policy silo and explicitly retrieve
 	# its 'PermittedAccounts' property. This is a crucial step as the property
@@ -62,7 +62,7 @@ Date: August 25, 2025
 
 
 	# ****************************************************************************************
-	# Part 1: checks if Silo is consistent with Tier 0 Admins group
+	# Part 1: checks if Silo is consistent with group
 	# ****************************************************************************************
 	Write-Host "Checking if there are users configured on Silo `"$siloName`" that are not members of group `"$adminGroup`"..." -ForegroundColor Green
 
@@ -150,6 +150,7 @@ Date: August 25, 2025
 		}
 		Write-Host "" # Add a blank line for readability between users
 	}
-
+	
+	Stop-Transcript
 
 }

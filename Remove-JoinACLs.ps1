@@ -1,4 +1,6 @@
-﻿# Importa o módulo do Active Directory (AD)
+# Author: Andre Torres (https://github.com/andretorresbr/ghadd/)
+
+ # Importa o módulo do Active Directory (AD)
 Import-Module ActiveDirectory
 
 # Obtém a data e hora atual no formato desejado
@@ -11,8 +13,7 @@ $nomeArquivo = ".\Remove-JoinACLs_Log_$dataAtual.txt"
 Start-Transcript -Path $nomeArquivo
 
 # Configura a conta cujas ACLs serão removidas (conta de join no domínio)
-# => ALTERAR PARA CONFIGURAR A CONTA DE JOIN DO DOMÍNIO
-$creatorAccount = "CORP\andre.torres"
+$creatorAccount = "CORP\andre.torres" # => ALTERAR PARA CONFIGURAR A CONTA DE JOIN DO DOMÍNIO
 
 # Obtém a lista de computadores do domínio
 $computers = Get-ADComputer -Filter *
@@ -47,5 +48,6 @@ foreach ($computer in $computers)
         Set-ACL -Path "AD:$($computer.DistinguishedName)" -AclObject $acl
     }
 }
+
 
 Stop-Transcript

@@ -122,7 +122,7 @@ function Sync-ADObjectToGroup {
             try {
                 $memberDN = ($currentMembers | Where-Object { $_.SamAccountName -eq $member }).DistinguishedName
                 Remove-ADGroupMember -Identity $group.Name -Members $memberDN -Confirm:$false -ErrorAction Stop
-                Write-Host "Successfully removed $($member)." -ForegroundColor Red
+                Write-Host "Successfully removed $($member) from group $($DestinationGroup)." -ForegroundColor Red
             }
             catch {
                 Write-Warning "Could not remove $($member) from the group."
@@ -130,7 +130,7 @@ function Sync-ADObjectToGroup {
         }
     }
     else {
-        Write-Host "No members need to be removed." -ForegroundColor Green
+        Write-Host "No members need to be removed from group $($DestinationGroup)." -ForegroundColor Green
     }
     
     # Process members to add
@@ -140,15 +140,15 @@ function Sync-ADObjectToGroup {
             try {
                 $memberDN = ($allDesiredObjects | Where-Object { $_.SamAccountName -eq $member }).DistinguishedName
                 Add-ADGroupMember -Identity $group.Name -Members $memberDN -ErrorAction Stop
-                Write-Host "Successfully added $($member)." -ForegroundColor Green
+                Write-Host "Successfully added $($member) to group $($DestinationGroup)." -ForegroundColor Green
             }
             catch {
-                Write-Warning "Could not add $($member) to the group. It may already be a member or the object no longer exists."
+                Write-Warning "Could not add $($member) to the group $($DestinationGroup). It may already be a member or the object no longer exists."
             }
         }
     }
     else {
-        Write-Host "No members need to be added." -ForegroundColor Green
+        Write-Host "No members need to be added to group $($DestinationGroup)." -ForegroundColor Green
     }
 
     Write-Host "Synchronization script execution completed."

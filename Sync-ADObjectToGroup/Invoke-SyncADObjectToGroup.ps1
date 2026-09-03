@@ -12,6 +12,10 @@ Sync-ADObjectToGroup -SourceOU ("OU=Tier0,DC=corp,DC=local", "OU=Domain Controll
 
 # Syncs all existing users under OU Tier0/Usuarios with group T0 Users, except users breaktheglass_da and btg_da
 Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Users" -ObjectType User -ExcludedObject @("breaktheglass_da","btg_da") -LogFile "C:\Tools\Scripts\Sync-T0_Users_log.txt"
+
+# Syncs all existing service accounts (users, sMSA and gMSA) under OU Tier0/Contas de Servico with group T0 Contas de Servico
+Sync-ADObjectToGroup -SourceOU "OU=Contas de Servico,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Contas de Servico" -ObjectType ServiceAccount -LogFile "C:\Tools\Scripts\Sync-T0_ContasDeServico_log.txt"
+
 ####################
 
 
@@ -22,6 +26,9 @@ Sync-ADObjectToGroup -SourceOU "OU=Tier1,DC=corp,DC=local" -DestinationGroup "T1
 
 # Syncs all existing users under OU Tier1/Usuarios with group T1 Users
 Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier1,DC=corp,DC=local" -DestinationGroup "T1 Users" -ObjectType User -LogFile "C:\Tools\Scripts\Sync-T1_Users_log.txt"
+
+# Syncs all existing service accounts (users, sMSA and gMSA) under OU Tier1/Contas de Servico with group T1 Contas de Servico
+Sync-ADObjectToGroup -SourceOU "OU=Contas de Servico,OU=Tier1,DC=corp,DC=local" -DestinationGroup "T1 Contas de Servico" -ObjectType ServiceAccount -LogFile "C:\Tools\Scripts\Sync-T1_ContasDeServico_log.txt"
 ####################
 
 
@@ -32,4 +39,7 @@ Sync-ADObjectToGroup -SourceOU "OU=Tier2,DC=corp,DC=local" -DestinationGroup "T2
 
 # Syncs all existing users under OU Tier2/Usuarios with group T2 Users
 Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier2,DC=corp,DC=local" -DestinationGroup "T2 Users" -ObjectType User -LogFile "C:\Tools\Scripts\Sync-T2_Users_log.txt"
+
+# Syncs all existing service accounts (users, sMSA and gMSA) under OU Tier2/Contas de Servico with group T2 Contas de Servico
+Sync-ADObjectToGroup -SourceOU "OU=Contas de Servico,OU=Tier2,DC=corp,DC=local" -DestinationGroup "T2 Contas de Servico" -ObjectType ServiceAccount -LogFile "C:\Tools\Scripts\Sync-T2_ContasDeServico_log.txt"
 ####################

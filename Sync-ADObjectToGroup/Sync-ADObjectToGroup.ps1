@@ -3,7 +3,7 @@
 function Sync-ADObjectToGroup {
 <#
     .SYNOPSIS
-        Synchronizes a target Active Directory group with the users or computers from one or more specified OUs.
+        Synchronizes a target Active Directory group with the users, computers or service accounts from one or more specified OUs.
 
     .DESCRIPTION
         This function ensures that a destination group contains exactly the objects found within
@@ -19,15 +19,18 @@ function Sync-ADObjectToGroup {
         The name of the Active Directory group to be synchronized.
 
     .PARAMETER ObjectType
-        Specifies the type of objects to synchronize. Valid values are 'User' or 'Computer'.
+        Specifies the type of objects to synchronize. Valid values are 'User', 'Computer' or 'ServiceAccount'.
+        'ServiceAccount' collects regular user objects AND sMSA/gMSA objects, which are not returned
+        by Get-ADUser or Get-ADComputer because they use their own objectCategory.
 
     .PARAMETER ExcludedObject
-        An optional parameter to specify one or more objects (by their name) to be excluded from being
+        An optional parameter to specify one or more objects (by their SamAccountName) to be excluded from being
         added or removed from the group. This can be a single string or an array of strings.
+        NOTE: sMSA/gMSA SamAccountNames end with a '$' (e.g. "svc_sql$"), which must be included here.
 
     .PARAMETER LogFile
         The full path to the log file where all command output will be written. This is a mandatory parameter.
-		
+
     .EXAMPLE
         Sync-ADObjectToGroup -SourceOU "OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Servers" -ObjectType Computer
 
@@ -42,6 +45,12 @@ function Sync-ADObjectToGroup {
         Sync-ADObjectToGroup -SourceOU "OU=Usuarios,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Users" -ObjectType User -ExcludedObject @("breaktheglass_da","btg_da") -LogFile "C:\Tools\Scripts\Sync-T0_Users_log.txt"
 
         This command synchronizes the 'T0 Users' group with user objects from the 'Usuarios/Tier0' OU, excluding the users with the name 'breaktheglass_da' and 'btg_da'.
+
+    .EXAMPLE
+        Sync-ADObjectToGroup -SourceOU "OU=Contas de Servico,OU=Tier0,DC=corp,DC=local" -DestinationGroup "T0 Contas de Servico" -ObjectType ServiceAccount -LogFile "C:\Tools\Scripts\Sync-T0_ContasDeServico_log.txt"
+
+        This command synchronizes the 'T0 Contas de Servico' group with the service accounts from the 'Contas de Servico/Tier0' OU,
+        including regular user objects as well as sMSA and gMSA objects.
 #>
 
     param (
@@ -52,7 +61,7 @@ function Sync-ADObjectToGroup {
         [string]$DestinationGroup,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet("User", "Computer")]
+        [ValidateSet("User", "Computer", "ServiceAccount")]
         [string]$ObjectType,
 
         [string[]]$ExcludedObject = $null,
@@ -60,10 +69,20 @@ function Sync-ADObjectToGroup {
         [Parameter(Mandatory = $true)]
         [string]$LogFile
     )
-	
-	# Define the log file path
-	Start-Transcript -Path $LogFile -Append
-    
+
+    # Define the log file path
+    Start-Transcript -Path $LogFile -Append
+
+    # Object classes accepted as group members, per ObjectType.
+    # IMPORTANT: Get-ADGroupMember returns 'msDS-ManagedServiceAccount' / 'msDS-GroupManagedServiceAccount'
+    # for MSAs. Without listing them here they would never be detected as current members, so the script
+    # would try to add them on every run and would never be able to remove them.
+    switch ($ObjectType) {
+        "Computer"       { $memberClasses = @("computer") }
+        "User"           { $memberClasses = @("user") }
+        "ServiceAccount" { $memberClasses = @("user", "msDS-ManagedServiceAccount", "msDS-GroupManagedServiceAccount") }
+    }
+
     # Check if the destination group exists
     try {
         $group = Get-ADGroup -Identity $DestinationGroup -ErrorAction Stop
@@ -76,7 +95,7 @@ function Sync-ADObjectToGroup {
 
     # Initialize an array to hold all desired objects from all OUs
     $allDesiredObjects = @()
-    
+
     # Find desired objects from all specified OUs and store them in a single collection
     foreach ($ouPath in $SourceOU) {
         Write-Host "Searching for objects in '$ouPath'..."
@@ -87,6 +106,25 @@ function Sync-ADObjectToGroup {
             if ($ObjectType -eq "Computer") {
                 # IMPORTANT: Using Get-ADComputer avoids adding gMSA/sMSA objects
                 $objectsInOU = Get-ADComputer `
+                    -SearchBase $ouPath `
+                    -SearchScope Subtree `
+                    -Filter * `
+                    -Properties SamAccountName, DistinguishedName
+            }
+            elseif ($ObjectType -eq "ServiceAccount") {
+                $objectsInOU = @()
+
+                # Regular service accounts (plain user objects)
+                $objectsInOU += Get-ADUser `
+                    -SearchBase $ouPath `
+                    -SearchScope Subtree `
+                    -Filter * `
+                    -Properties SamAccountName, DistinguishedName
+
+                # sMSA and gMSA objects.
+                # IMPORTANT: these have their own objectCategory (ms-DS-Managed-Service-Account /
+                # ms-DS-Group-Managed-Service-Account) and are returned by neither Get-ADUser nor Get-ADComputer.
+                $objectsInOU += Get-ADServiceAccount `
                     -SearchBase $ouPath `
                     -SearchScope Subtree `
                     -Filter * `
@@ -106,7 +144,7 @@ function Sync-ADObjectToGroup {
             Write-Error "The specified source OU '$ouPath' was not found or could not be searched. Skipping."
         }
     }
-    
+
     # Check if any objects were found in the specified OUs
     if (-not $allDesiredObjects) {
         Write-Warning "No objects found in the specified source OUs. The destination group will be emptied of synchronized members."
@@ -115,7 +153,7 @@ function Sync-ADObjectToGroup {
     # Get current members of the destination group
     try {
         $currentMembers = Get-ADGroupMember -Identity $group.Name -Recursive |
-            Where-Object { $_.objectClass -in @("user", "computer") } |
+            Where-Object { $_.objectClass -in $memberClasses } |
             ForEach-Object {
                 Get-ADObject -Identity $_.DistinguishedName -Properties SamAccountName, DistinguishedName
             }
@@ -127,7 +165,7 @@ function Sync-ADObjectToGroup {
 
     # Get a list of SamAccountNames of desired objects, excluding the ones to be skipped
     $desiredSamAccounts = $allDesiredObjects.SamAccountName | Where-Object { $_ -notin $ExcludedObject }
-    
+
     # Get a list of SamAccountNames of current members, excluding the ones to be skipped
     $currentSamAccounts = $currentMembers.SamAccountName | Where-Object { $_ -notin $ExcludedObject }
 
@@ -154,7 +192,7 @@ function Sync-ADObjectToGroup {
     else {
         Write-Host "No members need to be removed from group $($DestinationGroup)." -ForegroundColor Green
     }
-    
+
     # Process members to add
     if ($membersToAdd) {
         Write-Host "Found members to add to the group: $($membersToAdd -join ', ')..." -ForegroundColor Green
@@ -174,5 +212,5 @@ function Sync-ADObjectToGroup {
     }
 
     Write-Host "Synchronization script execution completed."
-	Stop-Transcript
+    Stop-Transcript
 }

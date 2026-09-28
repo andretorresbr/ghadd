@@ -17,13 +17,13 @@ A cada execução, o script:
 
 Estes pontos não são opcionais — cada um foi motivo de falha durante a implantação.
 
-* **PowerShell 7** (`pwsh.exe`). O BloodHoundOperator exige PS7; o Windows PowerShell 5.1 (`powershell.exe`) **não** serve. Caminho típico: `C:\\Program Files\\PowerShell\\7\\pwsh.exe`.
-* **SharpHound.exe** em um diretório dedicado (ex.: `C:\\Tools\\sharphound`).
+* **PowerShell 7** (`pwsh.exe`). O BloodHoundOperator exige PS7; o Windows PowerShell 5.1 (`powershell.exe`) **não** serve. Caminho típico: `C:\Program Files\PowerShell\7\pwsh.exe`.
+* **SharpHound.exe** em um diretório dedicado (ex.: `C:\Tools\sharphound`).
 * **BloodHoundOperator.ps1** (projeto [SadProcessor/BloodHoundOperator](https://github.com/SadProcessor/BloodHoundOperator)) baixado localmente — **não** está na PowerShell Gallery; carrega-se por *dot-source*, não por `Import-Module`.
 * **gMSA** (ex.: `corp\svc_coletorbhce$`) instalada e testável na máquina de coleta:
 
 ```powershell
-  Test-ADServiceAccount svc\_coletorbhce   # deve retornar True
+  Test-ADServiceAccount svc_coletorbhce   # deve retornar True
   ```
 
   A gMSA precisa do direito **"Log on as a batch job"** e **não** precisa de Domain Admin: `DCOnly` coleta tudo via LDAP como usuário autenticado comum.
@@ -42,14 +42,14 @@ KEY: <seu_token_key_do_bhce>
 Crie o arquivo sem BOM e restrinja o acesso — a gMSA precisa apenas de **leitura**:
 
 ```powershell
-$keyFile = "C:\\Tools\\Scripts\\.bhkey"
-\[System.IO.File]::WriteAllText($keyFile, "ID: <id>`r`nKEY: <key>")
+$keyFile = "C:\Tools\Scripts\.bhkey"
+[System.IO.File]::WriteAllText($keyFile, "ID: <id>`r`nKEY: <key>")
 
 $acl = New-Object System.Security.AccessControl.FileSecurity
 $acl.SetAccessRuleProtection($true, $false)   # remove herança
-$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("corp\\svc\_coletorbhce$","Read","Allow")))
-$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("BUILTIN\\Administrators","FullControl","Allow")))
-$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("NT AUTHORITY\\SYSTEM","FullControl","Allow")))
+$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("corp\svc_coletorbhce$","Read","Allow")))
+$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("BUILTIN\Administrators","FullControl","Allow")))
+$acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule("NT AUTHORITY\SYSTEM","FullControl","Allow")))
 Set-Acl $keyFile $acl
 ```
 
@@ -85,10 +85,10 @@ O payload envia **apenas** `deleteCollectedGraphData: true` — isso apaga o gra
 ## Execução manual (teste)
 
 ```powershell
-& "C:\\Program Files\\PowerShell\\7\\pwsh.exe" -NoProfile -ExecutionPolicy Bypass `
-  -File "C:\\Tools\\Scripts\\Invoke-BhceIngestor.ps1" `
-  -SharpHoundPath 'C:\\Tools\\sharphound' `
-  -LogFile 'C:\\Tools\\sharphound\\Invoke-BhceIngestor_log.txt' `
+& "C:\Program Files\PowerShell\7\pwsh.exe" -NoProfile -ExecutionPolicy Bypass `
+  -File "C:\Tools\Scripts\Invoke-BhceIngestor.ps1" `
+  -SharpHoundPath 'C:\Tools\sharphound' `
+  -LogFile 'C:\Tools\sharphound\Invoke-BhceIngestor_log.txt' `
   -ClearDatabase
 ```
 
@@ -147,7 +147,7 @@ Get-Content "C:\Tools\sharphound\Invoke-BhceIngestor_log.txt" -Tail 10
 
 |Sintoma|Causa provável|Correção|
 |-|-|-|
-|`LastTaskResult=1`, sem log|Ação com `-File` (parsing quebrado) ou `-LogFile` em diretório sem escrita da gMSA|Use `-Command` (acima) e log em `C:\Tools\\sharphound\`|
+|`LastTaskResult=1`, sem log|Ação com `-File` (parsing quebrado) ou `-LogFile` em diretório sem escrita da gMSA|Use `-Command` (acima) e log em `C:\Tools\sharphound\`|
 |`403 - not authorized` na limpeza|Conta BHCE é Upload-Only / Power User|Use conta com role **Administrator** para o clear|
 |`Clear-BHDatabase` não apaga o grafo|Bug da BETA (`deleteCollectedGraphData:false`)|Já contornado: o script usa `Invoke-BHAPI`|
 |`Access to the path '...bin' is denied`|Cache do SharpHound com dono de outra conta|Apague `Coletas` e deixe a gMSA recriá-lo; não rode como admin ali|

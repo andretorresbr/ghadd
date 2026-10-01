@@ -21,12 +21,18 @@ param(
 
     # BHCE - endpoint da instancia
     [string]   $BHServer   = "srv-bhce.corp.local",
-    [string]   $BHProtocol = "http",   # "http" (porta 80, texto puro) ou "https"
-    [string]   $BHPort     = "80",
+    [string]   $BHProtocol = "https",  # "https" (porta 443, TLS) ou "http" (porta 80, texto puro)
+    [string]   $BHPort     = "443",
 
     # Limpa o GRAFO do BHCE antes do upload (apaga nos/arestas coletados; preserva Tier Zero/Owned).
     # ATENCAO: exige que a sessao tenha role Administrator no BHCE (conta Upload-Only recebe 403).
-    [switch]   $ClearDatabase
+    [switch]   $ClearDatabase,
+
+    # Segundos de espera APOS o clear, antes de iniciar os uploads. O pipe volta a 'idle'
+    # imediatamente, mas o backend ainda finaliza a limpeza; subir cedo demais faz o BHCE
+    # CANCELAR o upload (observado: 5s = cancela; 60s = ok). 120s da margem de seguranca.
+    # So se aplica com -ClearDatabase.
+    [int]      $PostClearWaitSeconds = 120
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,6 +63,34 @@ function Wait-BHPipeIdle {
         Start-Sleep -Seconds $PollSeconds
     } while ((Get-Date) -lt $deadline)
     return $false
+}
+
+# Espera um job de upload especifico (por ID) chegar a um status final.
+# Status do BHCE: 2 = Complete ; 3 = Canceled ; outros = em processamento.
+# Retorna o objeto do job no estado final, ou $null se estourar o timeout.
+# Consulta a API direta (/api/v2/file-upload) porque Get-BHDataUpload nesta versao
+# nao lista os jobs de forma confiavel.
+function Wait-BHUploadJob {
+    param(
+        [Parameter(Mandatory)][int] $JobId,
+        [int] $TimeoutSeconds = 600,
+        [int] $PollSeconds    = 10
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        Start-Sleep -Seconds $PollSeconds
+        try {
+            $todos = (Invoke-BHAPI -Method GET -Uri '/api/v2/file-upload?limit=25&skip=0').data
+        } catch {
+            Write-Log "  Falha ao consultar status do job ${JobId}: $($_.Exception.Message)" 'WARN'
+            $todos = @()
+        }
+        $job = $todos | Where-Object { [int]$_.id -eq $JobId } | Select-Object -First 1
+        if ($job -and $job.status -in @(2,3)) { return $job }
+        $st = if ($job) { $job.status } else { 'desconhecido' }
+        Write-Log "  Job ${JobId} em processamento (status=$st)..."
+    } while ((Get-Date) -lt $deadline)
+    return $null
 }
 
 try {
@@ -142,8 +176,16 @@ try {
     Write-Log "Credencial BHCE carregada de $BHCredentialFile (ID=$BHTokenID)."
 
     New-BHSession -TokenID $BHTokenID -Token $BHTokenKey -Server $BHServer -Protocol $BHProtocol -Port $BHPort | Out-Null
-    $null = Get-BHSession
-    Write-Log "Sessao BHCE criada ($BHProtocol`://$BHServer`:$BHPort)."
+
+    # New-BHSession NAO lanca excecao com token invalido: so emite WARNING e cria uma
+    # sessao placeholder com campos 'tbd'. Precisamos confirmar que autenticou de fato,
+    # senao o clear/upload rodam contra uma sessao invalida e o BHCE cancela os jobs
+    # (sintoma: File Ingest = Canceled / 0 Files) enquanto o log diria "sucesso".
+    $sess = Get-BHSession | Select-Object -First 1
+    if (-not $sess -or $sess.Operator -in @($null, '', 'tbd')) {
+        throw "Falha de autenticacao no BHCE: sessao invalida (Operator='$($sess.Operator)'). Verifique o token no $BHCredentialFile, o relogio da maquina (assinatura HMAC) e o endpoint $BHProtocol`://$BHServer`:$BHPort."
+    }
+    Write-Log "Sessao BHCE autenticada como '$($sess.Operator)' (Role=$($sess.Role)) em $BHProtocol`://$BHServer`:$BHPort."
 
     if ($ClearDatabase) {
         Write-Log "Limpando o grafo do BHCE via API (/api/v2/clear-database)..." 'WARN'
@@ -163,23 +205,66 @@ try {
             # subir por cima de uma limpeza ainda em curso pode apagar os dados novos.
             throw "Timeout esperando a limpeza concluir (pipe nao ficou idle). Upload abortado para evitar corrida."
         }
+
+        # IMPORTANTE: o pipe volta a 'idle' imediatamente apos o clear, mas o backend ainda
+        # esta finalizando a limpeza do grafo. Iniciar o upload cedo demais faz o BHCE
+        # CANCELAR o job (status 3, 0 files). Observado: upload 5s apos o clear = cancelado;
+        # 60s = Complete. Por isso esperamos aqui antes de subir.
+        if ($PostClearWaitSeconds -gt 0) {
+            Write-Log "Aguardando $PostClearWaitSeconds s para o backend assentar apos a limpeza..."
+            Start-Sleep -Seconds $PostClearWaitSeconds
+        }
     }
+
+    # Uploads SERIALIZADOS: enviar os zips em rajada faz o BHCE cancelar os jobs
+    # (observado: dois uploads com ~1s de intervalo = ambos Canceled/0 files; com espera
+    # entre eles = ambos Complete). Entao enviamos um por vez e esperamos cada job
+    # chegar a status final antes do proximo.
+    # Identificamos cada job novo pelo maior ID (sequencial/crescente no BHCE).
+    Write-Log "Iniciando uploads serializados ($($zipsParaUpload.Count) arquivo(s))..."
+
+    $resultados = @()
 
     foreach ($z in $zipsParaUpload) {
+        # Maior ID existente imediatamente antes deste upload
+        $maxIdAntes = 0
+        try {
+            $pre = (Invoke-BHAPI -Method GET -Uri '/api/v2/file-upload?limit=25&skip=0').data
+            if ($pre) { $maxIdAntes = ($pre | Measure-Object -Property id -Maximum).Maximum }
+        } catch {
+            Write-Log "  Nao foi possivel ler jobs antes do upload: $($_.Exception.Message)" 'WARN'
+        }
+
         Write-Log "Enviando: $z"
-        # Caminho passado posicionalmente, como validado manualmente (BHDataUpload $ZipFilePath).
-        # BHDataUpload e alias de Invoke-BHDataUpload.
-        Invoke-BHDataUpload $z
-        Write-Log "Upload disparado para: $z"
+        Invoke-BHDataUpload $z    # caminho posicional, como validado manualmente
+        Write-Log "Upload enviado. Aguardando o job (id > $maxIdAntes) concluir..."
+
+        # Descobre o ID do job recem-criado (primeiro id > maxIdAntes)
+        Start-Sleep -Seconds 3
+        $novoId = $null
+        try {
+            $agora  = (Invoke-BHAPI -Method GET -Uri '/api/v2/file-upload?limit=25&skip=0').data
+            $novoId = ($agora | Where-Object { [int]$_.id -gt $maxIdAntes } |
+                       Sort-Object id | Select-Object -First 1).id
+        } catch { }
+
+        if (-not $novoId) {
+            throw "Nao foi possivel identificar o job de upload criado para '$z'."
+        }
+
+        $job = Wait-BHUploadJob -JobId ([int]$novoId) -TimeoutSeconds 600 -PollSeconds 10
+        if (-not $job) {
+            throw "Timeout aguardando o job $novoId ('$z') concluir. Verifique a UI (File Ingest)."
+        }
+        if ($job.status -ne 2 -or [int]$job.total_files -eq 0) {
+            Write-Log "Job com problema: id=$($job.id) status=$($job.status) total_files=$($job.total_files)" 'ERROR'
+            throw "Upload de '$z' nao foi ingerido com sucesso (job $($job.id), status=$($job.status)). O grafo pode estar incompleto."
+        }
+        Write-Log "Ingest OK: id=$($job.id) status=Complete total_files=$($job.total_files)."
+        $resultados += $job
     }
 
-    # Espera o ingest dos zips terminar, para o log refletir conclusao real (nao so "disparado").
-    Write-Log "Aguardando o BHCE processar os uploads..."
-    if (Wait-BHPipeIdle -TimeoutSeconds 600 -PollSeconds 10) {
-        Write-Log "Ingest concluido (pipe idle)."
-    } else {
-        Write-Log "Timeout aguardando o ingest concluir. Os uploads foram enviados; verifique a UI (File Ingest)." 'WARN'
-    }
+    Write-Log "Todos os $($resultados.Count) uploads foram ingeridos com sucesso."
 
     Write-Log "===== Execucao concluida com sucesso ====="
 }
